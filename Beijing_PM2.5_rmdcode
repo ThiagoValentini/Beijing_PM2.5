@@ -1,0 +1,480 @@
+---
+title: "Análise Descritiva, Correlativa e Preditiva da qualidade do Ar da China"
+author: "Thiago Siriaki Valentini"
+date: "thiagovalentini@hotmail.com"
+output: html_document
+---
+
+#### Curitiba, 25 de Dezembro de 2019.
+
+```{r echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+library(tidyverse)
+library(twitteR)
+library(pdftools)
+library(tibble)
+library(dplyr)
+library(tidytext)
+library(readr)
+library(tm)
+library(wordcloud)
+library(ggplot2)
+library(tidyr)
+library(igraph)
+library(ggraph)
+library(widyr)
+library(stringr)
+library(topicmodels)
+library(ldatuning)
+library(wesanderson)
+library(RColorBrewer)
+library(rmarkdown)
+library(knitr)
+library(gridExtra)
+```
+
+&nbsp;
+&nbsp;
+
+##### A análise a seguir utiliza como referência os dados coletados de hora em hora pela Escola de Administração de Guanghua, Centro de Ciência Estatística, da Universidade de Pequim, que foram coletadas entre 01/01/2010 à 31/12/2014 na Embaixada dos EUA em Pequim, utilizando a base: [**PM2.5**](https://archive.ics.uci.edu/ml/datasets/Beijing+PM2.5+Data)
+
+&nbsp;
+&nbsp;
+
+#### **Dados**
+
+&nbsp;
+&nbsp;
+
+Abaixo podemos ver as 15 primeiras observações de *PM2.5* das 43.824 coletadas durante o período do estudo. A PM 2.5, ou "Partículas minúsculas", são assim chamadas por medirem menos de 2,5 micrômetros (milionésimo de metro), e se formam a partir de gases como dióxido de enxofre, óxido de nitrogênio e compostos voláteis, liberados durante as atividades de combustão.
+
+&nbsp;
+&nbsp;
+
+```{r, echo=FALSE}
+
+#Abrir o arquivo
+base= read.csv("F:\\DataScienceeBigData\\20192S\\AnalisedeDadosComREscobar\\TrabalhoFinal\\BeijingPM2.5\\PRSA_data_2010.1.1-2014.12.31.csv")
+
+#Atalho para a principal coluna: PM25
+x= base$pm2.5
+
+#Montar tabela
+
+kable(base[01:15,])
+
+```
+
+&nbsp;
+&nbsp;
+
+#### **Análise de Quartis**
+
+&nbsp;
+&nbsp;
+
+Através dos Quartis, dividiremos de maneira ordenada o conjunto em 4 partes iguais e desta forma, poderemos analisar o grau de dispersão dos dados.
+
+
+```{r, echo=FALSE}
+
+#Divisão de quartis:
+q=data.frame(PM2.5=quantile(x,na.rm=TRUE))
+
+
+#Mostra os Quartis:
+kable(q)
+
+```
+
+
+Os dados apresentados mostram uma grande concentração dos valores em um lado da curva. Aproximadamente 81% deles possuem concentração menor ou igual à 200$ug/m^3$ de PM2.5.
+
+Através do histograma abaixo pode-se ter uma melhor visualização dessa análise:
+
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Análise de histograma
+hist(x, breaks=4)
+
+```
+
+
+#### **Análise Correlativa**
+
+&nbsp;
+&nbsp;
+
+A Análise Correlativa ou Análise de Correlação é utilizada para determinar, de forma estatística, a relação entre duas variáveis. Seu resultado varia entre 1 e -1, onde -1 significa sem nenhuma relação e 1 com total relação.
+
+Para testarmos as Correlações entre os dados, iremos utilizar os três principais métodos correlativos: ***Pearson***, ***Spearman*** e ***Kendall***.
+
+&nbsp;
+&nbsp;
+
+##### ***Método de Pearson***:
+
+
+```{r, echo=FALSE}
+
+# Matriz de Correlação de Pearson:
+
+cors=data.frame(hour=cor(x, base$hour, use="complete.obs"),
+                DEWP=cor(x, base$DEWP, use="complete.obs"),
+                TEMP=cor(x, base$TEMP, use="complete.obs"),
+                PRES=cor(x, base$PRES, use="complete.obs"),
+                Iws=cor(x, base$Iws, use="complete.obs"),
+                Is=cor(x, base$Is, use="complete.obs"),
+                Ir=cor(x, base$Ir, use="complete.obs"))
+
+# Virando a matriz e trocando o nome da coluna
+
+cors=t(cors)
+cors=data.frame(cors)
+names(cors)="PM2.5"
+
+kable(cors,)
+
+```
+
+&nbsp;
+&nbsp;
+
+##### ***Método de Spearman***:
+
+```{r, echo=FALSE}
+
+# Matriz de correlação Spearman:
+
+cors2=data.frame(hour=cor(x, base$hour, use="complete.obs", method=("spearman")),
+                 DEWP=cor(x, base$DEWP, use="complete.obs", method=("spearman")),
+                 TEMP=cor(x, base$TEMP, use="complete.obs", method=("spearman")),
+                 PRES=cor(x, base$PRES, use="complete.obs", method=("spearman")),
+                 Iws=cor(x, base$Iws, use="complete.obs", method=("spearman")),
+                 Is=cor(x, base$Is, use="complete.obs", method=("spearman")),
+                 Ir=cor(x, base$Ir, use="complete.obs", method=("spearman")))
+
+# Virando a matriz e trocando o nome da coluna
+
+cors2=t(cors2)
+cors2=data.frame(cors2)
+names(cors2)="PM2.5"
+
+kable(cors2)
+```
+
+&nbsp;
+&nbsp;
+
+##### ***Método de Kendall***:
+
+```{r, echo=FALSE}
+# Matriz de correlação Kendall:
+
+cors3=data.frame(hour=cor(x, base$hour, use="complete.obs", method=("kendall")),
+                 DEWP=cor(x, base$DEWP, use="complete.obs", method=("kendall")),
+                 TEMP=cor(x, base$TEMP, use="complete.obs", method=("kendall")),
+                 PRES=cor(x, base$PRES, use="complete.obs", method=("kendall")),
+                 Iws=cor(x, base$Iws, use="complete.obs", method=("kendall")),
+                 Is=cor(x, base$Is, use="complete.obs", method=("kendall")),
+                 Ir=cor(x, base$Ir, use="complete.obs", method=("kendall")))
+
+# Virando a matriz e trocando o nome da coluna
+
+cors3=t(cors3)
+cors3=data.frame(cors3)
+names(cors3)="PM2.5"
+
+kable(cors3)
+```
+
+&nbsp;
+&nbsp;
+
+##### Correlações mostradas pelo heatmap:
+
+```{r, echo=FALSE, fig.align='center'}
+
+#Correlação mostrada por heatmap
+base2=base[,-c(1:5, 10)]
+tabela=cor(base2,y=NULL, use="complete.obs")
+heatmap(as.matrix(tabela), Colv=NA, Rowv=NA)
+
+```
+
+###### *Quanto mais forte for a cor, maior será a correlação, enquanto que, quanto mais fraca a cor, menor a correlação.*
+
+&nbsp;
+&nbsp;
+
+
+A partir dos dados mostrados podemos identificar duas correlações semelhantes nos três métodos: 
+
+- O Ponto de Orvalho *DEWP* apresenta a maior correlação com a PM2.5, ou seja, podemos supor que quanto maior for o Ponto de Orvalho, maior será a concentração destas partículas presentes no ar nas gotas formadas durante a noite, aumentando assim sua concentração.
+
+- Já a Velocidade do Vento *IWS* apresenta a menor correlação com PM2.5, ou seja, podemos novamente supor que quanto maior for a velocidade do vento, menor será a concentração desta partícula.
+
+
+&nbsp;
+&nbsp;
+
+#### **Análise de dispersão**
+&nbsp;
+&nbsp;
+
+Abaixo podemos observar o comportamento das duas principais variáveis identificadas, com relação à partícula PM2.5.
+
+```{r, echo=FALSE, fig.align='center'}
+
+## Análise de correlação
+
+# Deletar observações que contenham NA.
+
+base3=na.omit(base)
+
+# Correlação com Ponto de Orvalho
+
+DEWP=ggplot(base3, aes(x=DEWP, y=pm2.5))+
+  geom_point()+
+  labs(x="Ponto de Orvalho", y="PM2.5")
+
+# Correlação com Velocidade do Vento
+
+Iws=ggplot(base3, aes(x=Iws, y=pm2.5))+
+  geom_point()+
+  labs(x="Velocidade do Vento", y="PM2.5")
+
+# Arranja os gráficos um ao lado do outro.
+
+grid.arrange(DEWP, Iws, ncol=2)
+
+```
+
+&nbsp;
+&nbsp;
+
+Utilizamos a análise de dispersão para identificar os comportamentos normais e anormais entre as variáveis.
+
+&nbsp;
+&nbsp;
+
+##### **Ponto de Orvalho**
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Medidas de dispersão PM2.5:
+
+m=mean(x, na.rm=TRUE)
+sd=sd(x, na.rm=TRUE)
+ls=m+sd
+li=m-sd
+
+# Gráfico com Ponto de Orvalho
+
+
+ggplot(base3, aes(x=base3$DEWP, y=base3$pm2.5))+
+  geom_point()+
+  geom_hline(yintercept=ls, linetype="dashed", colour="red")+
+  geom_hline(yintercept=li, linetype="dashed", colour="red")+
+  labs(x="Ponto de Orvalho", y="PM2.5")
+
+```
+&nbsp;
+&nbsp;
+
+Analisando o Gráfico, podemos notar que a concentração de PM2.5 é extremamente baixa quando o Ponto de Orvalho está entre -40 e -30, aumentando a partir daí e começando a reduzir a partir de 10.
+
+Diferente do que foi anteriormente suposto, podemos notar uma forte concentração da PM2.5 quando o **Ponto de Orvalho** está entre -20 e 0, e não quando este valor está chegando em seu máximo.
+
+&nbsp;
+&nbsp;
+
+##### **Velocidade do Vento**
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Medidas de dispersão PM2.5:
+
+m=mean(x, na.rm=TRUE)
+sd=sd(x, na.rm=TRUE)
+ls=m+sd
+li=m-sd
+
+# Gráfico com Velocidade do Vento
+
+library(ggplot2)
+
+ggplot(base3, aes(x=base3$Iws, y=base3$pm2.5))+
+  geom_point()+
+  geom_hline(yintercept=ls, linetype="dashed", colour="red")+
+  geom_hline(yintercept=li, linetype="dashed", colour="red")+
+  labs(x="Velocidade do Vento", y="PM2.5")
+
+```
+
+&nbsp;
+&nbsp;
+
+Analisando o Gráfico podemos constatar o que foi suposto anteriormente: Quanto maior for a velocidade do vento, menor será a concentração da Partícula PM2.5.
+
+&nbsp;
+&nbsp;
+
+##### **Concentração de PM2.5 por ano:**
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Gráfico com os anos
+ggplot(base3, aes(x=base3$year, y=base3$pm2.5))+
+  geom_point()+
+  geom_hline(yintercept=ls, linetype="dashed", colour="red")+
+  geom_hline(yintercept=li, linetype="dashed", colour="red")+
+  labs(x="Ano", y="PM2.5")
+
+```
+
+&nbsp;
+&nbsp;
+
+Através do Gráfico, podemos identificar um forte aumento na concentração de PM2.5 no ano de 2013, embora que em 2010 e 2012 também apresentem, mesmo que com menor frequência, os maiores valores medidos.
+O ano com menor concentração de PM2.5 foi 2011 seguido de 2014.
+
+Diferente do que se poderia esperar, os dados não mostraram necessariamente que com o passar dos anos a concentração de PM2.5 aumentaria, mas sim que ela é alta e está presente na vida de milhares de Chineses.
+
+&nbsp;
+&nbsp;
+
+#### **Análise Preditiva através da Regressão Linear Múltipla**
+
+&nbsp;
+&nbsp;
+
+Utilizando a Regressão Linear Múltipla, tentaremos demonstrar a partir das variáveis mostradas nos dados, o comportamento da Partícula PM2.5 através de uma equação. Abaixo seguem os coeficientes desta equação sem ajuste:
+
+
+```{r, echo=FALSE}
+
+# Regressão linear
+
+mod = lm(base3$pm2.5 ~ base3$DEWP + base3$TEMP +
+           base3$PRES + base3$Iws + base3$Is + base3$Ir)
+
+# Coletando os nomes do resultado para extrair variáveis específicas
+
+names = names(summary(mod))
+
+# Extraindo as variáveis importantes do modelo:
+
+coefficients = summary(mod)$coefficients
+rsquared = summary(mod)$adj.r.squared
+
+# Apresentando a tabela de coeficientes:
+
+kable(coefficients)
+
+```
+
+&nbsp;
+&nbsp;
+
+O modelo apresentou um $R^2$ (coeficiente de determinação) ajustado de `r format(round(rsquared,3))`, ou seja, ele é capaz de explicar apenas `r format(round(rsquared*100,1))`% das variações da PM2.5.
+
+Ainda existem outros pontos para serem analisados, sendo o primeiro deles o intercepto da função, que expressa um número caso o valor das outras variáveis seja zero.
+
+Excluindo o intercepto da função, obtemos os coeficientes abaixo:
+
+
+
+```{r, echo=FALSE}
+
+# Regressão linear
+
+mod = lm(base3$pm2.5 ~ base3$DEWP + base3$TEMP +
+           base3$PRES + base3$Iws + base3$Is + base3$Ir -1)
+
+# Coletando os nomes do resultado para extrair variáveis específicas
+
+names = names(summary(mod))
+
+# Extraindo as variáveis importantes do modelo:
+
+coefficients = summary(mod)$coefficients
+rsquared2 = summary(mod)$adj.r.squared
+
+# Apresentando a tabela de coeficientes:
+
+kable(coefficients)
+
+```
+
+&nbsp;
+&nbsp;
+
+Com este novo modelo conseguimos melhorar o $R^2$ de `r format(round(rsquared,3))`, para `r format(round(rsquared2,3))`.
+
+O Segundo Ponto a ser analisado seria o valor de P ou Probabilidade de Significância, onde levando em conta uma significância de 5% para o modelo, valores iguais ou abaixo a isso são estatisticamente significativos, enquanto que os valores acima não são.
+Para este caso, *aceitamos a hipótese de que a variável é significativa*.
+
+O Terceiro Ponto é analisar se o modelo atende as três principais premissas da regressão linear:
+1 - $y$ Possa ser expressado de forma linear ou ter sua função "linearizada";
+2 - Hipótese da Homocedasticidades, onde a variação dos resíduos das observações são constantes em torno da reta;
+3 - Os dados seguem uma distribuição normal de probabilidade;
+
+Para realizar estas análises, utilizaremos os gráficos abaixo:
+
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Mostrando a verificação das premissas da regressão
+
+plot(mod,1)
+
+```
+
+&nbsp;
+&nbsp;
+
+Podemos perceber que a reta se comporta de forma exponencial e os resíduos aumentam ao longo dela.
+
+&nbsp;
+&nbsp;
+
+```{r, echo=FALSE, fig.align='center'}
+
+# Mostrando a verificação das premissas da regressão
+
+plot(mod,2)
+
+```
+&nbsp;
+&nbsp;
+
+Neste caso vemos que os dados não seguem próximos a reta, e isso indica que sua distribuição não é boa para atender às premissas do modelo.
+
+O Modelo pode ser ajustado ou ter sua função linearizada para verificar se ocorrerá melhora em suas premissas ou não.
+
+&nbsp;
+&nbsp;
+
+
+#### **A equação linear (não ajustada)**
+
+&nbsp;
+&nbsp;
+
+##### **$y_{PM2.5}= 4.62x_{DEWP} - 5.22_{TEMP} + 0.16x_{PRES} - 0.26x_{Iws} - 2.35x_{Is} - 7.01x_{Ir}$**
+
+&nbsp;
+&nbsp;
+
+$x_{DEWP}$: Com o aumento de 1 grau na temperatura do Ponto de Orvalho, o resultado seria o aumento de 4.26 $ug/m^3$ de PM2.5.
+
+$x_{TEMP}$: Com o aumento de 1 grau na temperatura, o resultado seria uma redução de 5.22 $ug/m^3$ de PM2.5.
+
+$x_{PRES}$: Com o aumento de 1 hPa na pressão, o resultado seria o aumento de 0.16 $ug/m^3$ de PM2.5.
+
+$x_{Iws}$: Com o aumento de 1m/s na velocidade do vento, o resultado seria uma redução de 0.26 $ug/m^3$ de PM2.5.
+
+$x_{Ir}$: Com o aumento de 1 hora de neve, o resultado seria uma redução de 2.35 $ug/m^3$ de PM2.5.
+
+$x_{TEMP}$: Com o aumento de 1 hora de chuva, o resultado seria uma redução de 7.01 $ug/m^3$ de PM2.5.
